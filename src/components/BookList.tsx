@@ -1,46 +1,47 @@
-'use client';
-
-import { useEffect, useState } from 'react';
 import styles from '../app/page.module.css';
-import BookForm from './BookForm';
+import ClientBookForm from '@/components/ClientBookForm';
 import { Book } from '@/types/book';
+import { createClient } from '@/utils/supabase/server';
 
-export default function BookList() {
-  const [books, setBooks] = useState<Book[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+async function getBooks() {
+  const supabase = await createClient();
+  
+  try {
+    const { data, error } = await supabase
+      .from('books')
+      .select()
 
-  const fetchBooks = async () => {
-    try {
-      const res = await fetch('http://localhost:8080/books', { 
-        cache: 'no-store'
+    console.log('Fetched data:', data);
+
+    if (error) {
+      console.error('Supabase error details:', {
+        message: error.message,
+        code: error.code,
+        details: error.details,
       });
-      
-      if (!res.ok) {
-        throw new Error('Failed to fetch books');
-      }
-      
-      const data = await res.json();
-      setBooks(data);
-    } catch (error) {
-      console.error('Error fetching books:', error);
-    } finally {
-      setIsLoading(false);
+      throw error;
     }
-  };
 
-  useEffect(() => {
-    fetchBooks();
-  }, []);
+    if (!data) {
+      console.log('No data returned from Supabase');
+      return [];
+    }
 
-  if (isLoading) {
-    return <div>로딩 중...</div>;
+    return data as Book[];
+  } catch (error) {
+    console.error('Error fetching books:', error);
+    return [];
   }
+}
+
+export default async function BookList() {
+  const books = await getBooks();
 
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>도서 목록</h1>
       
-      <BookForm onSuccess={fetchBooks} />
+      <ClientBookForm />
       
       <div className={styles.bookList}>
         {books.length === 0 ? (
@@ -58,4 +59,4 @@ export default function BookList() {
       </div>
     </div>
   );
-} 
+}
